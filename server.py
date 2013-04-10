@@ -1,5 +1,5 @@
 from flask import Flask, request
-from flask.ext.restful import Resource, Api
+from flask.ext.restful import Resource, Api, reqparse
 import RPi.GPIO as GPIO
 import atexit
 
@@ -33,7 +33,7 @@ class SprinklerGPIO():
 		GPIO.setup(self.PIN_SR_DAT, GPIO.OUT)
 		GPIO.setup(self.PIN_SR_LAT, GPIO.OUT)
 
-		self.setShiftRegister(self.currentValues)
+		self.updateRegister()
 		self.enableShiftRegisterOutput()
 
 	def setStationStatus(self, stationID, status):
@@ -43,6 +43,9 @@ class SprinklerGPIO():
 
 	def getStationStatus(self, stationID):
 		return self.currentValues[stationID]
+
+	def getCurrentValues(self): 
+		return self.currentValues
 
 	def enableShiftRegisterOutput(self):
 		GPIO.output(self.PIN_SR_NOE, False)
@@ -62,8 +65,8 @@ class SprinklerGPIO():
 		GPIO.output(self.PIN_SR_LAT, True)
 
 	def cleanup(self):
-		stationValues = [0]*self.numberOfStations
-		self.setShiftRegister(stationValues)
+		self.currentValues = [0]*self.numberOfStations
+		self.updateRegister()
 		GPIO.cleanup()
 
 
@@ -78,12 +81,26 @@ class SprinklerREST(Resource):
 		return {"stationID": stationID, "status": status}
 
 	def put(self, stationID):
-		status = sgpio.setStationStatus(stationID, request.form['data'].active)
+		args = parser.parse_args()
+		status = sgpio.setStationStatus(stationID, args.status)
 
 		return {"stationID": stationID, "status": status}
 
+class SprinklerListREST(Resource):
+    def get(self):
+	ret = []
+	sv = sgpio.getCurrentValues()
+	for s in range(0, NUM_STATIONS):
+		cur = NUM_STATIONS - 1 - s
+		ret.append({"stationID": cur, "status": sv[cur]})
 
-api.add_resource(SprinklerREST, '/<string:sprinklerID>')
+        return ret
+
+parser = reqparse.RequestParser()
+parser.add_argument('status', type=int)
+
+api.add_resource(SprinklerListREST, '/')
+api.add_resource(SprinklerREST, '/<int:stationID>')
 
 
 def progexit():
@@ -91,5 +108,5 @@ def progexit():
 
 if __name__ == '__main__':
 	atexit.register(progexit)
-	app.run(debug=True)
+	app.run(host="0.0.0.0", port=8081, debug=True)
 
