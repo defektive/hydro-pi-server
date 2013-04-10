@@ -111,8 +111,8 @@ def validateStation(stationID):
 parser = reqparse.RequestParser()
 parser.add_argument('status', type=int)
 
-api.add_resource(SprinklerListREST, '/')
-api.add_resource(SprinklerREST, '/<int:stationID>')
+api.add_resource(SprinklerListREST, '/stations')
+api.add_resource(SprinklerREST, '/stations/<int:stationID>')
 
 
 def progexit():
