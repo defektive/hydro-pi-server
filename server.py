@@ -1,5 +1,5 @@
-from flask import Flask, request
-from flask.ext.restful import Resource, Api, reqparse
+from flask import Flask
+from flask.ext.restful import Resource, Api, reqparse, abort
 import RPi.GPIO as GPIO
 import atexit
 
@@ -76,13 +76,18 @@ sgpio = SprinklerGPIO(NUM_STATIONS)
 class SprinklerREST(Resource):
 
 	def get(self, stationID):
+		validateStation(stationID)
 		status = sgpio.getStationStatus(stationID)
 
 		return {"stationID": stationID, "status": status}
 
 	def put(self, stationID):
+		validateStation(stationID)
 		args = parser.parse_args()
-		status = sgpio.setStationStatus(stationID, args.status)
+
+		# fail to off, only turn on if we get a 1
+		setStatus = 1 if args.status == 1 else 0
+		status = sgpio.setStationStatus(stationID, setStatus)
 
 		return {"stationID": stationID, "status": status}
 
@@ -97,6 +102,11 @@ class SprinklerListREST(Resource):
 			ret.insert(0, {"stationID": cur, "status": sv[cur]})
 
 		return ret
+
+
+def validateStation(stationID):
+	if stationID >= NUM_STATIONS:
+		abort(404, message="Invalid Station {}".format(stationID))
 
 parser = reqparse.RequestParser()
 parser.add_argument('status', type=int)
