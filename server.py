@@ -44,7 +44,7 @@ class SprinklerGPIO():
 	def getStationStatus(self, stationID):
 		return self.currentValues[stationID]
 
-	def getCurrentValues(self): 
+	def getCurrentValues(self):
 		return self.currentValues
 
 	def enableShiftRegisterOutput(self):
@@ -86,15 +86,17 @@ class SprinklerREST(Resource):
 
 		return {"stationID": stationID, "status": status}
 
-class SprinklerListREST(Resource):
-    def get(self):
-	ret = []
-	sv = sgpio.getCurrentValues()
-	for s in range(0, NUM_STATIONS):
-		cur = NUM_STATIONS - 1 - s
-		ret.append({"stationID": cur, "status": sv[cur]})
 
-        return ret
+class SprinklerListREST(Resource):
+
+	def get(self):
+		ret = []
+		sv = sgpio.getCurrentValues()
+		for s in range(0, NUM_STATIONS):
+			cur = NUM_STATIONS - 1 - s
+			ret.insert(0, {"stationID": cur, "status": sv[cur]})
+
+		return ret
 
 parser = reqparse.RequestParser()
 parser.add_argument('status', type=int)
@@ -109,4 +111,3 @@ def progexit():
 if __name__ == '__main__':
 	atexit.register(progexit)
 	app.run(host="0.0.0.0", port=8081, debug=True)
-
